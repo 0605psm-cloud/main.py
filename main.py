@@ -34,8 +34,8 @@ def healthz():
 
 @app.get("/")
 def root():
-    return {"message": "Hello from Cloud Run!"}
-
+    return {"ok": True, "ts": datetime.now().timestamp(), "message": "Hello from Cloud Run!"}
+    
 @app.post("/command")
 async def command(cmd: Command, authorization: str | None = Header(None)):
     auth(authorization)
