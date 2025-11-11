@@ -1,36 +1,50 @@
+# server.py
 import asyncio
 import websockets
+import json
 from aiohttp import web
 
-# =============== WebSocket Handler ===============
-async def handler(websocket):
-    print("✅ 클라이언트가 연결되었습니다.")
+connected_clients = set()
+
+async def websocket_handler(websocket):
+    print("✅ 클라이언트 연결됨")
+    connected_clients.add(websocket)
     try:
         async for message in websocket:
             print(f"📩 수신: {message}")
-            await websocket.send(f"서버 응답: {message}")
+            # 그대로 echo 또는 로직 추가 가능
+            for client in connected_clients:
+                if client != websocket:
+                    await client.send(message)
     except websockets.exceptions.ConnectionClosed:
-        print("❌ 연결이 종료되었습니다.")
+        print("❌ 연결 종료")
+    finally:
+        connected_clients.remove(websocket)
 
-# =============== HTTP Health Check ===============
-async def healthcheck(request):
-    return web.Response(text="OK")  # Render가 여기로 HEAD/GET 보냄
+async def start_websocket_server():
+    print("🚀 WebSocket 서버 시작 ws://0.0.0.0:8765")
+    async with websockets.serve(websocket_handler, "0.0.0.0", 8765):
+        await asyncio.Future()  # 무한 대기
 
-async def start_websocket():
-    print("🚀 WebSocket 서버 시작: ws://0.0.0.0:8765")
-    async with websockets.serve(handler, "0.0.0.0", 8765):
-        await asyncio.Future()
+# ✅ Render 헬스체크용 HTTP 서버
+async def handle_root(request):
+    return web.Response(text="Server is running ✅")
 
-async def start_http():
+async def start_http_server():
     app = web.Application()
-    app.router.add_get("/", healthcheck)
+    app.router.add_get("/", handle_root)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", 10000)  # Render의 기본 포트
+    site = web.TCPSite(runner, "0.0.0.0", 10000)
+    print("🌐 HTTP 서버 시작 (Render Health Check용)")
     await site.start()
-    print("🌐 HTTP 헬스체크 서버 시작: http://0.0.0.0:10000")
 
+# ✅ 두 서버를 동시에 실행
 async def main():
-    await asyncio.gather(start_http(), start_websocket())
+    await asyncio.gather(
+        start_http_server(),
+        start_websocket_server()
+    )
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
