@@ -42,6 +42,20 @@ async def vehicle_ws_handler(ws: WebSocket, vehicleId: str):
         while True:
             _ = await ws.receive_json()  # 차량 이벤트 수신(추후 확장)
     except WebSocketDisconnect:
+
+        from fastapi import FastAPI
+from datetime import datetime
+
+app = FastAPI()
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True, "ts": datetime.now().timestamp()}
+
+@app.get("/")
+def root():
+    return {"message": "Hello from Cloud Run!"}
+
         pass
     finally:
         vehicle_ws.pop(vehicleId, None)
