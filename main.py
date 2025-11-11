@@ -1,9 +1,9 @@
-import os, uuid, time
-from typing import Dict
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
+import os, uuid
+from typing import Dict
 
 API_TOKEN = os.getenv("API_TOKEN", "CHANGE_ME")
 
@@ -28,14 +28,16 @@ def auth(b: str | None):
     if b != f"Bearer {API_TOKEN}":
         raise HTTPException(401, "Unauthorized")
 
-@app.get("/healthz")
-def healthz():
-    return {"ok": True, "ts": datetime.now().timestamp()}
-
+# ✅ Cloud Run 기본 헬스체크 경로 대응
 @app.get("/")
 def root():
-    return {"ok": True, "ts": datetime.now().timestamp(), "message": "Hello from Cloud Run!"}
-    
+    return {"ok": True, "ts": datetime.now().timestamp(), "message": "Root OK"}
+
+# ✅ 별도 헬스엔드포인트
+@app.get("/healthz")
+def healthz():
+    return {"ok": True, "ts": datetime.now().timestamp(), "message": "Health OK"}
+
 @app.post("/command")
 async def command(cmd: Command, authorization: str | None = Header(None)):
     auth(authorization)
@@ -56,7 +58,7 @@ async def vehicle_ws_handler(ws: WebSocket, vehicleId: str):
     vehicle_ws[vehicleId] = ws
     try:
         while True:
-            _ = await ws.receive_json()  # 차량 이벤트 수신(추후 확장)
+            _ = await ws.receive_json()
     except WebSocketDisconnect:
         pass
     finally:
